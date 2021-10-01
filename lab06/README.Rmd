@@ -102,13 +102,57 @@ mtsamples %>%
 
 ## Q5
 
-```{r}
-
+```{r placed, cache=TRUE}
+bigrams <- mtsamples %>%
+  unnest_ngrams(output = bigram, input = transcription, n = 2) %>%
+  separate(bigram, into = c("w1","w2"), sep = " ")
+ 
+bigrams %>%
+  filter(w1 == "placed") %>%
+  select(w1, w2) %>%
+  count(w2, sort = TRUE)
+  
+bigrams %>%
+  filter(w2 == "placed") %>%
+  select(w1, w2) %>%
+  count(w1, sort = TRUE)
 ```
+
+```{r placed-wo-stop}
+bigrams %>%
+  filter(w1 == "placed")%>%
+  filter(!(w2 %in% stop_words$word) & !grepl("^[0-9]+$", w2)) %>%
+  count(w2, sort = TRUE) %>%
+  top_n(10) %>%
+  knitr::kable()
+
+bigrams %>%
+  filter(w2 == "placed")%>%
+  filter(!(w1 %in% stop_words$word) & !grepl("^[0-9]+$", w1)) %>%
+  count(w1, sort = TRUE) %>%
+  top_n(10) %>%
+  knitr::kable()
+```
+
 
 ## Q6
 
 ```{r}
-
+mtsamples %>%
+  unnest_tokens(word, input = transcription) %>%
+  group_by(medical_specialty) %>%
+  count(word, sort = TRUE) %>%
+  filter(!(word %in% stop_words$word) & !grepl("^[0-9]+$", word)) %>%
+  top_n(5) %>%
+  arrange(medical_specialty, desc(n)) %>%
+  knitr::kable()
 ```
+
+
+
+
+
+
+
+
 
