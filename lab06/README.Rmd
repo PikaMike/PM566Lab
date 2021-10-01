@@ -1,0 +1,95 @@
+---
+title: "Lab06"
+output: html_document
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+options(repos = c(CRAN = "http://cran.rstudio.com"))
+
+library(tidyverse)
+library(tidytext)
+```
+
+```{r}
+fn <- "mtsamples.csv"
+if (!file.exists(fn))
+  download.file("https://raw.githubusercontent.com/USCbiostats/data-science-data/master/00_mtsamples/mtsamples.csv", destfile = fn)
+
+mtsamples <- read.csv(fn)
+mtsamples <- as_tibble(mtsamples)
+```
+
+## Q1
+
+```{r}
+specialties <- mtsamples %>%
+  count(medical_specialty)
+
+specialties %>%
+  arrange(desc(n)) %>%
+  top_n(15) %>%
+  knitr::kable()
+```
+
+There are `r nrow(specialties)` specialties.
+
+```{r dist1}
+#method1
+ggplot(mtsamples, aes(x = medical_specialty)) +
+  geom_histogram(stat = "count") +
+  coord_flip()
+```
+
+```{r dist2}
+#method2
+ggplot(specialties, aes(x = n, y =fct_reorder(medical_specialty,n))) +
+  geom_col()
+```
+
+
+There are not evenly (uniformly) distributed.
+
+##Q2
+
+```{r token-transcript,cathe = TRUE}
+mtsamples %>%
+  unnest_tokens(output = word, input = transcription) %>%
+  count(word, sort = TRUE) %>%
+  top_n(20) %>%
+  ggplot(aes(x = n, y = fct_reorder(word, n))) +
+    geom_col()
+```
+
+##Q3
+
+```{r token-transcript-wo-stop,cathe = TRUE}
+mtsamples %>%
+  unnest_tokens(output = word, input = transcription) %>%
+  count(word, sort = TRUE) %>%
+  anti_join(stop_words, by = "word") %>%
+  top_n(20) %>%
+  ggplot(aes(x = n, y = fct_reorder(word, n))) +
+    geom_col()
+```
+
+Looking better, but we don't like numbers.
+
+```{r}
+
+```
+
+```{r}
+
+```
+
+
+```{r}
+
+```
+
+```{r}
+
+```
+
