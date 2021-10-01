@@ -51,7 +51,7 @@ ggplot(specialties, aes(x = n, y =fct_reorder(medical_specialty,n))) +
 
 There are not evenly (uniformly) distributed.
 
-##Q2
+## Q2
 
 ```{r token-transcript,cathe = TRUE}
 mtsamples %>%
@@ -62,32 +62,51 @@ mtsamples %>%
     geom_col()
 ```
 
-##Q3
+## Q3
 
 ```{r token-transcript-wo-stop,cathe = TRUE}
 mtsamples %>%
   unnest_tokens(output = word, input = transcription) %>%
   count(word, sort = TRUE) %>%
   anti_join(stop_words, by = "word") %>%
+  # using regular expressions to remove numbers
+  filter(!grepl("^[0-9]+$", x = word)) %>%
   top_n(20) %>%
   ggplot(aes(x = n, y = fct_reorder(word, n))) +
     geom_col()
 ```
 
-Looking better, but we don't like numbers.
+Looking better~~, but we don't like numbers~~.
+
+## Q4
+
+```{r}
+mtsamples %>%
+  unnest_ngrams(output = bigram, input = transcription, n = 2) %>%
+  count(bigram, sort = TRUE) %>%
+  top_n(20) %>%
+  ggplot(aes(x = n, y = fct_reorder(bigram, n))) +
+    geom_col()
+```
+
+Using bi-grams is not very informative
+
+```{r}
+mtsamples %>%
+  unnest_ngrams(output = trigram, input = transcription, n = 3) %>%
+  count(trigram, sort = TRUE) %>%
+  top_n(20) %>%
+  ggplot(aes(x = n, y = fct_reorder(trigram, n))) +
+    geom_col()
+```
+
+## Q5
 
 ```{r}
 
 ```
 
-```{r}
-
-```
-
-
-```{r}
-
-```
+## Q6
 
 ```{r}
 
