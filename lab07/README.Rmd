@@ -46,7 +46,7 @@ ids <- httr::content(query_ids)
 ids
 ```
 
-
+## Q3
 
 ```{r}
 # Turn the result into a character vector
@@ -80,6 +80,24 @@ publications <- httr::content(publications)
 publications_txt <- as.character(publications)
 ```
 
+## Q4
+
+```{r univ-insti}
+institution <- str_extract_all(
+  tolower(publications_txt),
+  "university\\s+of\\s+[[:alpha:]-]+|[[:alpha:]-]+\\s+institute\\s+of\\s+[[:alpha:]-]+"
+  ) 
+institution <- unlist(institution)
+table(institution)
+```
+
+```{r}
+schools_and_deps <- str_extract_all(
+  abstracts_txt,
+  "school\\s+of\\s+[[:alpha:]-]+|[[:alpha:]-]+\\s+department\\s+of\\s+[[:alpha:]-]+"
+  )
+table(schools_and_deps)
+```
 
 
 
