@@ -91,13 +91,59 @@ institution <- unlist(institution)
 table(institution)
 ```
 
-```{r}
+```{r sch-dep}
 schools_and_deps <- str_extract_all(
-  abstracts_txt,
+  tolower(abstracts_txt),
   "school\\s+of\\s+[[:alpha:]-]+|[[:alpha:]-]+\\s+department\\s+of\\s+[[:alpha:]-]+"
   )
 table(schools_and_deps)
 ```
+
+## Q5
+
+```{r}
+pub_char_list <- xml2::xml_children(publications)
+pub_char_list <- sapply(pub_char_list, as.character)
+```
+
+```{r}
+abstracts <- str_extract(pub_char_list, "<Abstract>[[:print:][:space:]]</Abstract>")
+abstracts <- str_remove_all(abstracts, "</?[[:alnum:]- =\"]+>")
+abstracts <- str_replace_all(abstracts, "[:space:]+", " ")
+```
+
+```{r}
+titles <- str_extract(pub_char_list, "<ArticleTitle>[[:print:][:space:]+</ArticleTitle>]")
+titles <- str_remove_all(titles, "")
+```
+
+
+```{r}
+database <- data.frame(
+  PubMedID = ids,
+  Title = titles,
+  Abstract = abstracts
+)
+knitr::kable(database)
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
