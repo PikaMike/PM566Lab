@@ -1,0 +1,143 @@
+---
+title: "Assignment02"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r packages}
+library(data.table)
+library(tidyverse)
+library(ggplot2)
+library(leaflet)
+library(gtsummary)
+```
+
+```{r data-read, cache=TRUE}
+chs_individual <- data.table::fread("chs_individual.csv")
+chs_regional <- data.table::fread("chs_regional.csv")
+
+# merge two data frames by location
+total <- merge(chs_individual,dchs_regional,by="townname")
+dim(total)
+head(total)
+tail(total)
+str(total)
+
+nrow(chs_individual)
+nrow(chs_regional)
+nrow(total)
+```
+
+```{r na-replacing}
+total1 <- total                                              
+for(i in 1:ncol(total)) {                                   
+  total1[ , i][is.na(total1[ , i])] <- mean(total1[ , i], na.rm = TRUE)
+}
+total1                                                     
+```
+
+```{r obesity_level}
+total1<-data.table(total1)
+ifelse(bmi < 14, obesity_level <- "underweight BMI")
+fifelse(bmi<22, obesity_level <- "normal BMI")
+fifelse(bmi<24, obesity_level <- "overweight BMI")
+fifelse(bmi<24, obesity_level <- "obese BMI")
+
+summary(total1$obesity_level)
+```
+
+```{r smoke_gas_exposure}
+total1<-data.table(total1)
+ifelse(smoke==1 & gasstove==1, smoke_gas_exposure <- "smoke_gas")
+fifelse(smoke==1 & gasstove==0, smoke_gas_exposure <- "smoke_nongas")
+fifelse(smoke==0 & gasstove==1, smoke_gas_exposure <- "nonsmoke_gas")
+fifelse(smoke==0 & gasstove==0, smoke_gas_exposure <- "nonsmoke_nongas")
+
+summary(total1$obesity_level)
+```
+
+```{r summary}
+total1 %>% tbl_summary(by = townname) %>% add_p()
+total1 %>% tbl_summary(by = sex) %>% add_p()
+total1 %>% tbl_summary(by = obesity_level) %>% add_p()
+total1 %>% tbl_summary(by = smoke_gas_exposure) %>% add_p()
+```
+
+```{r Facet plot}
+ggplot(data = total1, mapping = aes(x = bmi, y = fev, fill = townname)) +
+  geom_point() + geom_smooth(method = "lm", se = FALSE) +
+  labs(title = "BMI vs FEV", xlab  = "BMI", y = "FEV")
+```
+
+```{r}
+ggplot(total1) + 
+  geom_histogram(mapping = aes(x = fev, fill=obesity_level, col=green))
+
+ggplot(total1) + 
+  geom_histogram(mapping = aes(x = fev, fill=smoke_gas_exposure, col=blue))
+```
+
+```{r Barchart}
+total1[!is.na(bmi) & bmi != "clear"] %>%
+  ggplot() + 
+  geom_bar(mapping = aes(x = bmi, fill = smoke_gas_exposure))+
+  scale_fill_viridis_d()
+```
+
+```{r Statistical summary graphs}
+l <- total1[!is.na(fev) & fev != "clear"] %>%
+  ggplot() + 
+    stat_summary(mapping = aes(x = fev, y = obesity_level),
+    fun.min = min,
+    fun.max = max,
+    fun = median)
+
+l <- total1[!is.na(fev) & fev != "clear"] %>%
+  ggplot() + 
+    stat_summary(mapping = aes(x = fev, y = smoke_gas_exposure),
+    fun.min = min,
+    fun.max = max,
+    fun = median)
+```
+
+```{r leaflet map}
+total2 <- (unique(total[,c("lat","lon")]))  
+dim(total2)
+
+leaflet(total2) %>% 
+  addProviderTiles('CHS communities') %>% 
+  addCircles(lat = ~lat, lng = ~lon, opacity = 1, fillOpacity = 1, radius = 400)
+```
+
+```{r examine whether PM2.5 mass is associated with FEV}
+mod <- lm(fev ~ pm25_mass, data = total1)
+total1[, plot(
+  pm25_mass, fev, pch=19, cex=0.5, 
+  main = "FEV and PM2.5 mass", 
+  xlab = "PM2.5 mass", ylab = "FEV")
+  ]
+abline(mod, lwd=2, col="red")
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
