@@ -1,0 +1,324 @@
+---
+title: "Midterm Project"
+output:
+  html_document: default
+  github_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+Question: We would like to know the newest Covid-19 vaccination condition among the U.S.
+To Build the herd immunity is essential to stop the Covid pandamic among the country. However the vaccination rate is different among the states. So, I am interested in the distribution about the vaccination condition.
+
+## Step 1
+
+## Read in the data
+
+The data comes from "https://covid.cdc.gov/covid-data-tracker/#vaccinations_vacc-total-admin-rate-total" containing the information about Covid-19 Vaccinations situdation among the states. Date generated: Sat Oct 23 2021 14:07:56 GMT-0700 (Pacific Daylight Time).
+
+```{r packages}
+library(data.table)
+library(tidyverse)
+library(leaflet)
+library(ggplot2)
+```
+
+```{r data-read, cache=TRUE}
+covid19 <- data.table::fread("covid19_vaccinations_in_the_united_states.csv")
+```
+
+## Step 2
+
+## Rename the key variables in the data
+
+The variable name in this dataset are very long so we rename the key variable's name.
+
+```{r Rename}
+covid19 <- dplyr::rename(covid19, totalDe = "Total Doses Delivered", 
+          location = "State/Territory/Federal Entity",
+          popfullVa = "People Fully Vaccinated by State of Residence",
+          totalper = "Percent of Total Pop Fully Vaccinated by State of Residence",
+          fullVa12 = "Percent of 12+ Pop Fully Vaccinated by State of Residence",
+          fullVa18 = "Percent of 18+ Pop Fully Vaccinated by State of Residence",
+          fullVa65 = "Percent of 65+ Pop Fully Vaccinated by State of Residence",
+          Pfizer = "People Fully Vaccinated Pfizer Resident",
+          Janssen = "People Fully Vaccinated Janssen Resident",
+          Unknown = "People Fully Vaccinated Unknown 2-dose manufacturer Resident",
+          Moderna = "People Fully Vaccinated Moderna Resident"
+                         )
+```
+
+## Step 3
+
+## Data arrangement
+
+Firstly, we found the United States in the location column, which row has the extremely large number comparing to other states. So, we would like to eliminate this row and the other rows with many NAs in it.
+
+```{r row eliminating}
+covid19 <- covid19[!(covid19$location=="United States" | covid19$location=="Bureau of Prisons" | covid19$location=="Dept of Defense" | covid19$location=="Indian Health Svc" | covid19$location=="Veterans Health"),]
+```
+
+## Step 4
+
+## Vaccinations condition summary
+
+Checking the mean and SD of the key variables
+
+```{r}
+covid19[, .(
+  "Mean Delivery"        = mean(totalDe, na.rm = TRUE),
+  "Sd Delivery"          = sd(totalDe, na.rm = TRUE),
+  "Mean population"      = mean(popfullVa, na.rm = TRUE),
+  "Sd population"        = sd(popfullVa, na.rm = TRUE),
+  "Mean PercentTal"      = mean(totalper, na.rm = TRUE),
+  "Sd PercentTal"        = sd(totalper, na.rm = TRUE),
+  "Mean Percent12+"      = mean(fullVa12, na.rm = TRUE),
+  "Sd Percent12+"        = sd(fullVa12, na.rm = TRUE),
+  "Mean Percent18+"      = mean(fullVa18, na.rm = TRUE),
+  "Sd Percent18+"        = sd(fullVa18, na.rm = TRUE),
+  "Mean Percent65+"      = mean(fullVa65, na.rm = TRUE),
+  "Sd Percent65+"        = sd(fullVa65, na.rm = TRUE)
+  )]
+```
+
+## Step 5
+
+## Vaccinations condition visual overview
+
+```{r vaccination per states}
+ggplot(data = covid19) + 
+  geom_point(mapping = aes(x = covid19$location, y = covid19$totalDe))+
+  coord_flip()
+
+ggplot(data = covid19) + 
+  geom_point(mapping = aes(x = covid19$location, y = covid19$popfullVa))+
+  coord_flip()
+```
+
+Based on the graph, we can see California and Taxes are the two states with most doses delivered and population fully vaccinated. However, these two states have the most population as well. So, percents of fully vaccinated by states can give us a better understanding of the vaccination condition. 
+
+```{r percent_bar}
+ggplot(data = covid19, aes(x = covid19$location, y = covid19$totalper, plot(covid19,xaxt="n"),axis(1,at=seq(0,100,10)))) +
+  geom_bar(stat = "identity")+
+  coord_flip()
+```
+
+From this graph, we can see that California remain a high rate of vaccination, although Taxes turns out to have a really low vaccination rate.
+
+## Step 6
+
+## Vaccinations condition for different age group
+
+Now we want to have a deep understanding about the distribution of fully vaccinated percentage among different age group. Although, there is not a confirmed statement about how much percentage vaccinated rate will be count for herd immunity, only in this project we use 60% as the cutoff between low percentage and high percentage.  
+
+```{r catagorical}
+covid19[, vaccinate_percent := fifelse(totalper < 60, "low percentage", NA_character_)]
+covid19[is.na(vaccinate_percent), vaccinate_percent := fifelse(totalper >= 60, "high percentage", NA_character_)]
+
+table_percent<-table(covid19$vaccinate_percent)
+knitr::kable(table_percent)
+```
+
+```{r boxplot1}
+ggplot(data = covid19, mapping = aes(x = covid19$vaccinate_percent, y = covid19$fullVa12)) + 
+  geom_boxplot(color='blue')
+```
+
+```{r boxplot2}
+ggplot(data = covid19, mapping = aes(x = covid19$vaccinate_percent, y = covid19$fullVa65)) + 
+  geom_boxplot(color='blue')
+```
+
+The box plots show that with low percentage vaccination states, the lower percent vaccination in both above 12-year old group and above 65-year old group.
+
+Then what's the relationship between each age group with the total percentage number?
+
+```{r}
+scatter.smooth(x=covid19$totalper, y=covid19$fullVa12, main="12+ ~ Total")  # scatterplot
+```
+
+```{r}
+ggplot(data = covid19, aes(x = covid19$totalper, y = covid19$fullVa12)) + 
+  geom_point(color='green') 
+  geom_smooth(method='lm', formula= y~x, color='black')
+```
+
+These two graphs show that the percentage of fully vaccinated for the age over 12+ is strongly linear correlated with the overall percentage of fully vaccinated in each state.
+(One outlier detected)
+
+```{r}
+scatter.smooth(x=covid19$totalper, y=covid19$fullVa18, main="18+ ~ Total")  # scatterplot
+```
+
+```{r}
+ggplot(data = covid19, aes(x = covid19$totalper, y = covid19$fullVa18)) + 
+  geom_point(color='green') +
+  geom_smooth(method='lm', formula= y~x, color='black')
+```
+
+These two graphs show that the percentage of fully vaccinated for the age over 18+ is strongly linear correlated with the overall percentage of fully vaccinated in each state as well. 
+And this group has a relatively high vaccinated rate comparing to age 12+ group by comparing the two linear regression lines' intercepts.
+
+```{r}
+scatter.smooth(x=covid19$totalper, y=covid19$fullVa65, main="65+ ~ Total")  # scatterplot
+```
+
+```{r}
+ggplot(data = covid19, aes(x = covid19$totalper, y = covid19$fullVa65)) + 
+  geom_point(color='green') +
+  geom_smooth(method='lm', formula= y~x, color='black')
+```
+
+Except 6 outliers, for age group over 65+, each state has a high vaccinated rate over 70%. And a linear correlation also shown in the graph.
+
+
+Correlation between group age 12+ and group age 65+.
+
+```{r cor}
+cor(covid19$fullVa65, covid19$fullVa12)  # calculate correlation between fullVa65 and fullVa12
+```
+
+Sorry for there are "N/A" in "Percent of Total Pop Fully Vaccinated by State of Residence" and "Percent of 18+ Pop Fully Vaccinated by State of Residence", which are not showing as missing value but typed "N/A". I tried to use "mutate_if(is.character, ~replace(., is.na(.), 0))" to replace them as 0 but this doesn't works. When I want to keep analyzing the relationship between age 18+ and total population percentage, it show non-numeric variable error, which stops me to do the futher regression.
+
+## Step 7
+
+## Vaccinations condition for different manufacturer (googled how to do linear regression)
+
+```{r manufacturer}
+covid19$Pfizer_rate  <- covid19$Pfizer/covid19$popfullVa
+covid19$Moderna_rate <- covid19$Moderna/covid19$popfullVa
+covid19$Janssen_rate <- covid19$Janssen/covid19$popfullVa
+covid19$Unknown_rate <- covid19$Unknown/covid19$popfullVa
+```
+
+```{r manufacturer-boxplot}
+ggplot(data = covid19, mapping = aes(x = covid19$vaccinate_percent, y = covid19$Pfizer_rate)) + 
+  geom_boxplot(fill='blue')
+
+ggplot(data = covid19, mapping = aes(x = covid19$vaccinate_percent, y = covid19$Moderna_rate)) + 
+  geom_boxplot(fill='blue')
+
+ggplot(data = covid19, mapping = aes(x = covid19$vaccinate_percent, y = covid19$Janssen_rate)) + 
+  geom_boxplot(fill='blue')
+```
+
+Correlation and linear regression between each manufacturer and vaccinated percentage:
+
+Pfizer:
+
+Correlation
+```{r manufacturer-cor}
+cor(covid19$fullVa12, covid19$Pfizer_rate)
+```
+
+Linear regression
+```{r linear}
+linearMod <- lm(fullVa12 ~ Pfizer_rate, data=covid19)  
+print(linearMod)
+summary(linearMod)
+```
+
+Moderna:
+
+Correlation
+```{r}
+cor(covid19$fullVa12, covid19$Moderna_rate)
+```
+
+Linear regression
+```{r}
+linearMod <- lm(fullVa12 ~ Moderna_rate, data=covid19)  
+print(linearMod)
+summary(linearMod)
+```
+
+Janssen:
+
+Correlation
+```{r}
+cor(covid19$fullVa12, covid19$Janssen_rate)
+```
+
+Linear regression
+```{r}
+linearMod <- lm(fullVa12 ~ Janssen_rate, data=covid19)  
+print(linearMod)
+summary(linearMod)
+```
+
+Base on the linear regressions, the p-value are 0.2712, 0.1948, and 0.847 respectively for Pfizer, Moderna and Janssen. None of the association is statistically significant. So, the manufacturer and the vaccination rate has not statistically significant associations.
+
+## Step 8
+
+## Conclusion
+
+Although the vaccines delivery has a large amount, there are still several states with a relatively low vaccination rate. So, the unbalance situation is still exist. Comparing to the age group of age 12+ and age 18+, the group age 65+ has a higher rate of vaccination. Manufacturers has notstatistically significant associations with vaccination rate.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
