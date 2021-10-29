@@ -1,0 +1,57 @@
+---
+title: "Lab 09"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Preblem 2
+
+```{r}
+fun1 <- function(n = 100, k = 4, lambda = 4) {
+  x <- NULL
+  for (i in 1:n)
+    x <- rbind(x, rpois(k, lambda))
+  return(x)
+}
+fun1(5,10)
+
+fun1alt <- function(n = 100, k = 4, lambda = 4) {
+  matrix(rpois(n * k, lambda), nrow = n, ncol = k)
+}
+
+# Benchmarking
+microbenchmark::microbenchmark(
+  fun1(),
+  fun1alt(), unit="relative"
+)
+```
+## Problem 3
+
+```{r}
+# Data Generating Process (10 x 10,000 matrix)
+set.seed(1234)
+x <- matrix(rnorm(1e4), nrow=10)
+
+# Find each column's max value
+fun2 <- function(x) {
+  apply(x, 2, max)
+}
+
+fun2alt <- function(x) {
+  # YOUR CODE HERE
+}
+
+# Benchmarking
+microbenchmark::microbenchmark(
+  fun2(),
+  fun2alt()
+)
+```
+
+```{r}
+
+```
+
