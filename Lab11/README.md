@@ -3,7 +3,7 @@ title: "Lab11"
 output: html_document
 ---
 
-
+**See my report** [**here**](https://ghcdn.rawgit.org/PikaMike/PM566Lab/main/Lab11/README.html)
 
 ```{r setup, message=FALSE, echo=FALSE, warning=FALSE}
 library(data.table)
