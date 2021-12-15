@@ -1,6 +1,8 @@
 ---
 title: "Assignment02"
-output: html_document
+output:
+  html_document: default
+  github_document: default
 ---
 
 ```{r setup, include=FALSE}
@@ -20,7 +22,7 @@ chs_individual <- data.table::fread("chs_individual.csv")
 chs_regional <- data.table::fread("chs_regional.csv")
 
 # merge two data frames by location
-total <- merge(chs_individual,dchs_regional,by="townname")
+total <- merge(chs_individual, chs_regional,by="townname")
 dim(total)
 head(total)
 tail(total)
@@ -34,36 +36,40 @@ nrow(total)
 ```{r na-replacing}
 total1 <- total                                              
 for(i in 1:ncol(total)) {                                   
-  total1[ , i][is.na(total1[ , i])] <- mean(total1[ , i], na.rm = TRUE)
+  total1[[i]][is.na(total1[[i]])] <- mean(total1[[i]], na.rm = TRUE)
 }
 total1                                                     
 ```
 
 ```{r obesity_level}
 total1<-data.table(total1)
-ifelse(bmi < 14, obesity_level <- "underweight BMI")
-fifelse(bmi<22, obesity_level <- "normal BMI")
-fifelse(bmi<24, obesity_level <- "overweight BMI")
-fifelse(bmi<24, obesity_level <- "obese BMI")
+total1[, obesity_level := fifelse(bmi < 14, "underweight BMI", NA_character_)]
+total1[is.na(obesity_level), obesity_level := fifelse(bmi<22, "normal BMI", NA_character_)]
+total1[is.na(obesity_level), obesity_level := fifelse(bmi<24, "overweight BMI", NA_character_)]
+total1[is.na(obesity_level), obesity_level := fifelse(bmi<24, "obese BMI", NA_character_)]
 
-summary(total1$obesity_level)
+total1[, .(min = min(bmi), max = max(bmi), n = .N), by = obesity_level]
 ```
 
 ```{r smoke_gas_exposure}
-total1<-data.table(total1)
-ifelse(smoke==1 & gasstove==1, smoke_gas_exposure <- "smoke_gas")
-fifelse(smoke==1 & gasstove==0, smoke_gas_exposure <- "smoke_nongas")
-fifelse(smoke==0 & gasstove==1, smoke_gas_exposure <- "nonsmoke_gas")
-fifelse(smoke==0 & gasstove==0, smoke_gas_exposure <- "nonsmoke_nongas")
+total1[, smoke_gas_exposure := fifelse(smoke==1 & gasstove==1, "smoke_gas", NA_character_)]
+total1[is.na(smoke_gas_exposure), smoke_gas_exposure := fifelse(smoke==1 & gasstove==0, "smoke_nongas", NA_character_)]
+total1[is.na(smoke_gas_exposure), smoke_gas_exposure := fifelse(smoke==0 & gasstove==1, "nonsmoke_gas", NA_character_)]
+total1[is.na(smoke_gas_exposure), smoke_gas_exposure := fifelse(smoke==0 & gasstove==0, "nonsmoke_nongas", NA_character_)]
 
-summary(total1$obesity_level)
+total1[, table(smoke_gas_exposure)]
 ```
 
 ```{r summary}
-total1 %>% tbl_summary(by = townname) %>% add_p()
-total1 %>% tbl_summary(by = sex) %>% add_p()
-total1 %>% tbl_summary(by = obesity_level) %>% add_p()
-total1 %>% tbl_summary(by = smoke_gas_exposure) %>% add_p()
+total1[, .(
+  "Mean fev"    = mean(fev, na.rm = TRUE),
+  "Sd fev"      = sd(fev, na.rm = TRUE),
+  "Prop Asthma" = mean(asthma, na.rm = TRUE),
+  "Sd Asthma"   = sd(asthma, na.rm = TRUE)
+  ),
+  by = townname]
+
+# You figure out the rest
 ```
 
 ```{r Facet plot}
@@ -74,42 +80,50 @@ ggplot(data = total1, mapping = aes(x = bmi, y = fev, fill = townname)) +
 
 ```{r}
 ggplot(total1) + 
-  geom_histogram(mapping = aes(x = fev, fill=obesity_level, col=green))
+  # Setting the fill color argument to be viridis discrete
+  scale_fill_viridis_d() +
+  geom_histogram(mapping = aes(x = fev, fill=obesity_level))
 
-ggplot(total1) + 
-  geom_histogram(mapping = aes(x = fev, fill=smoke_gas_exposure, col=blue))
+# You figure out the other
+# ggplot(total1) + 
+#   geom_histogram(mapping = aes(x = fev, fill=smoke_gas_exposure, col=blue))
 ```
 
 ```{r Barchart}
-total1[!is.na(bmi) & bmi != "clear"] %>%
-  ggplot() + 
-  geom_bar(mapping = aes(x = bmi, fill = smoke_gas_exposure))+
+ggplot(total1) + 
+  geom_bar(mapping = aes(x = obesity_level, fill = smoke_gas_exposure))+
   scale_fill_viridis_d()
 ```
 
 ```{r Statistical summary graphs}
-l <- total1[!is.na(fev) & fev != "clear"] %>%
-  ggplot() + 
+ggplot(total1) + 
     stat_summary(mapping = aes(x = fev, y = obesity_level),
     fun.min = min,
     fun.max = max,
     fun = median)
 
-l <- total1[!is.na(fev) & fev != "clear"] %>%
-  ggplot() + 
-    stat_summary(mapping = aes(x = fev, y = smoke_gas_exposure),
-    fun.min = min,
-    fun.max = max,
-    fun = median)
+# l <- total1[!is.na(fev) & fev != "clear"] %>%
+#   ggplot() + 
+#     stat_summary(mapping = aes(x = fev, y = smoke_gas_exposure),
+#     fun.min = min,
+#     fun.max = max,
+#     fun = median)
 ```
 
-```{r leaflet map}
-total2 <- (unique(total[,c("lat","lon")]))  
-dim(total2)
+```{r leaflet map, eval = knitr::is_html_output(excludes = "gfm")}
+total2 <- unique(total1[,.(townname, lon, lat, pm25_mass)])
+
+pal <- colorNumeric(c("green", "yellow", "red"), domain = range(total2$pm25_mass))
 
 leaflet(total2) %>% 
-  addProviderTiles('CHS communities') %>% 
-  addCircles(lat = ~lat, lng = ~lon, opacity = 1, fillOpacity = 1, radius = 400)
+  addTiles() %>% 
+  addCircles(
+    lat = ~lat, lng = ~lon, opacity = 1, fillOpacity = .5,
+    radius = ~pm25_mass*500,
+    stroke = 2,
+    color     = ~ pal(pm25_mass),
+    fillColor = ~ pal(pm25_mass)) %>%
+  addLegend(pal = pal, values = ~pm25_mass, title = "PM2.5 Mass")
 ```
 
 ```{r examine whether PM2.5 mass is associated with FEV}
